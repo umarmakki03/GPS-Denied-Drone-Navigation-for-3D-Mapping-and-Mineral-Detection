@@ -1,1 +1,257 @@
+# GPS-Denied Drone Navigation for 3D Mapping and Mineral Detection
 
+> **EECE 5554 — Robot Sensing and Navigation | Northeastern University, Spring 2026**
+
+[![ROS 2 Humble](https://img.shields.io/badge/ROS2-Humble-blue)](https://docs.ros.org/en/humble/)
+[![Gazebo Classic](https://img.shields.io/badge/Gazebo-Classic%2011-orange)](http://gazebosim.org/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20LTS-purple)](https://ubuntu.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
+A complete GPS-denied autonomous drone system that builds 3D maps of unknown underground mine tunnels from scratch, localizes itself in real time, and collects georeferenced spectral data for mineral identification — all without any GPS signal.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [System Architecture](#system-architecture)
+- [Key Results](#key-results)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
+- [Team](#team)
+- [Acknowledgments](#acknowledgments)
+- [References](#references)
+
+---
+
+## Overview
+
+Underground mining environments are GPS-denied, visually degraded, and geometrically complex — making autonomous navigation extremely challenging. This project presents a full-stack ROS 2 pipeline that enables a simulated drone to:
+
+1. **Localize and map** using LiDAR-inertial SLAM (LIO-SAM), with RTAB-Map as a fallback for featureless corridors
+2. **Reconstruct in 3D** via OctoMap probabilistic occupancy mapping and PCL post-processing
+3. **Classify minerals** from simulated NIR spectra matched against the USGS Spectral Library v7
+4. **Explore autonomously** using frontier-based exploration with Nav2 path planning
+
+The full pipeline is validated in **Gazebo Classic 11** using DARPA SubT Challenge **Jenolan cave meshes** (sections 04–08), forming a 50 × 30 × 5 m multi-branch tunnel network.
+
+---
+
+## System Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    ROS 2 Humble Pipeline                     │
+│                                                              │
+│  ┌─────────────┐   ┌──────────────┐   ┌──────────────────┐  │
+│  │  Sensor     │──▶│  SLAM /      │──▶│  3D Mapping      │  │
+│  │  Input      │   │  Pose Est.   │   │  (OctoMap + PCL) │  │
+│  │             │   │  (LIO-SAM /  │   │                  │  │
+│  │  - VLP-16   │   │   RTAB-Map)  │   └────────┬─────────┘  │
+│  │  - IMU      │   └──────────────┘            │            │
+│  │  - D435     │                               ▼            │
+│  │  - NIR Spec │   ┌──────────────┐   ┌──────────────────┐  │
+│  └─────────────┘   │  Mineral     │   │  Autonomous      │  │
+│                    │  Detection   │   │  Exploration     │  │
+│                    │  (kNN/SVM +  │   │  (Frontier +     │  │
+│                    │   DBSCAN)    │   │   Nav2)          │  │
+│                    └──────────────┘   └──────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Sensor Suite (Simulated)
+
+| Sensor | Spec | Topic |
+|---|---|---|
+| Velodyne VLP-16 LiDAR | 16-ring, 360°, 10 Hz, 30 m range | `/velodyne_points` |
+| 6-DOF IMU | 200 Hz, σ_gyro = 0.0002 rad/s | `/imu/data` |
+| Intel RealSense D435 | RGB-D, 640×480, 15 Hz | `/camera/...` |
+| NIR Spectrometer | Simulated, 1 Hz, USGS Library v7 | `/spectrometer/data` |
+
+### SLAM
+
+- **Primary:** [LIO-SAM](https://github.com/TixiaoShan/LIO-SAM) — tightly-coupled LiDAR-inertial odometry via factor graph with Scan Context loop closure
+- **Fallback:** [RTAB-Map](https://github.com/introlab/rtabmap_ros) — appearance-based loop closure for featureless straight corridors
+
+### Mineral Classification
+
+Five target minerals from the USGS Spectral Library v7:
+
+| Mineral | Confidence | Detection Points |
+|---|---|---|
+| Chalcopyrite | **92.8%** | 705 |
+| Hematite | 88.9% | 429 |
+| Malachite | 86.9% | 406 |
+| Quartz | 86.0% | 570 |
+| Limestone | 81.4% | 507 |
+
+---
+
+## Key Results
+
+| Metric | Result |
+|---|---|
+| Waypoint coverage | **100%** (114 / 114 frontier goals) |
+| Loop closures detected | Multiple at primary junctions (4–6 constraints/closure) |
+| Point cloud reconstruction | Full multi-branch network, ~3 m vertical range |
+| Mineral classification accuracy | 81.4% – 92.8% per class |
+| Real-time factor (Gazebo) | 0.88× in dense sections |
+| SLAM trajectory | No visible drift; structurally matches ground truth |
+
+---
+
+## Prerequisites
+
+- **OS:** Ubuntu 22.04 LTS
+- **ROS 2:** Humble Hawksbill (Desktop install)
+- **Gazebo:** Classic 11
+- **CUDA:** 11.5+ (for GPU-accelerated point cloud processing)
+- **Python:** 3.10+
+
+### ROS 2 Dependencies
+
+```bash
+sudo apt install ros-humble-nav2-bringup \
+                 ros-humble-octomap-server \
+                 ros-humble-pcl-ros \
+                 ros-humble-rtabmap-ros \
+                 ros-humble-ros-gz-bridge \
+                 ros-humble-rviz2
+```
+
+### Python Dependencies
+
+```bash
+pip install scikit-learn numpy scipy open3d
+```
+
+### External Packages
+
+- [LIO-SAM](https://github.com/TixiaoShan/LIO-SAM) — build from source
+- [DARPA SubT Worlds](https://github.com/osrf/subt) — Jenolan cave meshes (CC BY-SA 4.0)
+- [evo](https://github.com/MichaelGrupp/evo) — trajectory evaluation toolbox
+
+---
+
+## Installation
+
+```bash
+# 1. Create workspace
+mkdir -p ~/RSN_Proj/src && cd ~/RSN_Proj/src
+
+# 2. Clone this repository
+git clone https://github.com/umarmakki03/GPS-Denied-Drone-Navigation-for-3D-Mapping-and-Mineral-Detection.git
+
+# 3. Clone LIO-SAM
+git clone https://github.com/TixiaoShan/LIO-SAM.git
+
+# 4. Build workspace
+cd ~/RSN_Proj
+colcon build --symlink-install
+source install/setup.bash
+```
+
+---
+
+## Usage
+
+### 1. Launch Simulation Environment
+
+```bash
+ros2 launch drone_sim cave_world.launch.py
+```
+
+### 2. Start SLAM (LIO-SAM)
+
+```bash
+ros2 launch lio_sam run.launch.py
+```
+
+> To use RTAB-Map fallback instead:
+> ```bash
+> ros2 launch rtabmap_ros rtabmap.launch.py use_sim_time:=true
+> ```
+
+### 3. Start Autonomous Exploration
+
+```bash
+ros2 launch drone_nav frontier_exploration.launch.py
+```
+
+### 4. Start Mineral Detection
+
+```bash
+ros2 run mineral_classifier spectral_classifier_node
+```
+
+### 5. Visualize in RViz2
+
+```bash
+rviz2 -d config/drone_slam_viz.rviz
+```
+
+### Evaluate Trajectory (ATE / RPE)
+
+```bash
+evo_ape bag <rosbag> /odometry/ground_truth /lio_sam/mapping/odometry --plot
+```
+
+---
+
+## Project Structure
+
+```
+.
+├── drone_sim/               # Gazebo world, URDF, sensor plugins
+│   ├── worlds/
+│   │   └── cave_world.world
+│   ├── urdf/
+│   │   └── drone.urdf.xacro
+│   └── launch/
+├── drone_nav/               # Frontier exploration, Nav2 config
+│   ├── config/
+│   └── launch/
+├── mineral_classifier/      # NIR spectral classifier (kNN/SVM)
+│   ├── data/                # USGS Spectral Library profiles
+│   └── nodes/
+├── slam_config/             # LIO-SAM and RTAB-Map parameter files
+├── config/
+│   └── drone_slam_viz.rviz
+└── README.md
+```
+
+---
+
+## Team
+
+| Name | Email |
+|---|---|
+| Rithvik Shivva | shivva.r@northeastern.edu |
+| Sai Jayakar Vanam | vanam.sai@northeastern.edu |
+| Umar Hassan Makki Mohammed | mohammed.umar@northeastern.edu |
+| Priyanka Lakariya | lakariya.p@northeastern.edu |
+| Krish Santoki | santoki.k@northeastern.edu |
+
+**Instructor:** Dr. Thomas R. Consi
+**Course:** EECE 5554 — Robot Sensing and Navigation, Northeastern University
+
+---
+
+## Acknowledgments
+
+- DARPA SubT Challenge for Jenolan cave mesh assets (CC BY-SA 4.0, via Gazebo Fuel)
+- Open-source communities: ROS 2, LIO-SAM, RTAB-Map, Nav2, OctoMap
+- USGS Spectral Library Version 7 for mineral spectral profiles
+
+---
+
+## References
+
+1. T. Shan et al., "LIO-SAM: Tightly-coupled lidar inertial odometry via smoothing and mapping," *IEEE/RSJ IROS*, 2020.
+2. M. Labbé and F. Michaud, "RTAB-Map as an open-source lidar and visual SLAM library," *J. Field Robot.*, 2019.
+3. A. Hornung et al., "OctoMap: An efficient probabilistic 3D mapping framework," *Autonomous Robots*, 2013.
+4. G. Kim and A. Kim, "Scan Context: Egocentric spatial descriptor for place recognition," *IEEE/RSJ IROS*, 2018.
+5. R. N. Clark et al., *USGS Spectral Library Version 7*, U.S. Geological Survey, 2017.
+6. J. Shahmoradi et al., "Monitoring of inaccessible areas in GPS-denied underground mines using a fully autonomous encased safety inspection drone," *AIAA SciTech*, 2020.
