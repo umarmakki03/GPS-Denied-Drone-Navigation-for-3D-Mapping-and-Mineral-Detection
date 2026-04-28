@@ -1,6 +1,6 @@
 # GPS-Denied Drone Navigation for 3D Mapping and Mineral Detection
 
-> **EECE 5554 — Robot Sensing and Navigation | Northeastern University, Spring 2026**
+> **EECE 5554 — Robot Sensing and Navigation | Northeastern University**
 
 [![ROS 2 Humble](https://img.shields.io/badge/ROS2-Humble-blue)](https://docs.ros.org/en/humble/)
 [![Gazebo Classic](https://img.shields.io/badge/Gazebo-Classic%2011-orange)](http://gazebosim.org/)
