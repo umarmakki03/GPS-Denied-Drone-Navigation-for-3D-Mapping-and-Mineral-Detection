@@ -16,7 +16,7 @@ A complete GPS-denied autonomous drone system that builds 3D maps of unknown und
 
 ### Drone Platform
 
-![Drone Model](assets/drone_model.png)
+![Drone Model](assets/drone.jpeg)
 *CTU-CRAS-NORLAB X500 quadrotor adapted for Gazebo Classic 11, equipped with Velodyne VLP-16 LiDAR, Intel RealSense D435 RGB-D camera, 6-DOF IMU, and simulated NIR spectrometer.*
 
 ---
