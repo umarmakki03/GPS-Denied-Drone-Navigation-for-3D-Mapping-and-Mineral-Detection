@@ -1,0 +1,22 @@
+# Build outputs
+build/
+install/
+log/
+
+# Large map files
+maps/*.db
+maps/*.ply
+
+# External dependencies
+darpa_subt_worlds/
+NEU_tunnel_data/
+tunnel_data/
+
+# Zip files
+*.zip
+
+# Python cache
+__pycache__/
+*.pyc
+.DS_Store
+*.bag

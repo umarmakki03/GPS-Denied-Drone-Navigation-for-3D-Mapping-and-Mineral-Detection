@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="mineral_malachite">
+    <static>true</static>
+    <link name="link">
+      <visual name="visual">
+        <geometry><sphere><radius>0.3</radius></sphere></geometry>
+        <material>
+          <emissive>0.0 0.6 0.1 1</emissive>
+          <ambient>0.1 0.7 0.2 1</ambient>
+          <diffuse>0.1 0.7 0.2 1</diffuse>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
